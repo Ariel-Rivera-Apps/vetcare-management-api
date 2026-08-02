@@ -1,4 +1,5 @@
 import { Logger } from '@nestjs/common';
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -7,13 +8,25 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+  const allowedOrigins = (process.env.FRONTEND_URLS ?? 'http://localhost:5173')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
   const port = Number(process.env.PORT ?? 3000);
 
-  app.enableCors({
-    origin: frontendUrl,
+  const corsOptions: CorsOptions = {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`Origin not allowed by CORS: ${origin}`));
+    },
     credentials: true,
-  });
+  };
+
+  app.enableCors(corsOptions);
 
   app.setGlobalPrefix('api');
 
