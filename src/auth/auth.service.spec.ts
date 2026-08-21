@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { IDENTITY_PROVIDER } from './interfaces/identity-provider.interface';
 import { DevelopmentIdentityProvider } from './providers/development-identity.provider';
+import { UnavailableIdentityProvider } from './providers/unavailable-identity.provider';
 
 describe('AuthService', () => {
   const credentials: LoginDto = {
@@ -271,4 +272,14 @@ describe('AuthService', () => {
       });
     },
   );
+
+  it('keeps unknown authentication providers unavailable', async () => {
+    const unavailableService = new AuthService(
+      new UnavailableIdentityProvider(),
+    );
+
+    await expect(unavailableService.login(credentials)).rejects.toMatchObject({
+      status: 503,
+    });
+  });
 });

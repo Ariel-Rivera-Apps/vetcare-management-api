@@ -46,6 +46,25 @@ describe('OwnersService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('does not expose unexpected repository errors as conflicts', async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      providers: [
+        OwnersService,
+        {
+          provide: OWNER_REPOSITORY,
+          useValue: {
+            create: jest.fn().mockRejectedValue(new Error('database failed')),
+          },
+        },
+      ],
+    }).compile();
+    const serviceWithFailingRepository = moduleRef.get(OwnersService);
+
+    await expect(serviceWithFailingRepository.create(owner)).rejects.toThrow(
+      'database failed',
+    );
+  });
+
   it('lists owners', async () => {
     const created = await service.create(owner);
 
