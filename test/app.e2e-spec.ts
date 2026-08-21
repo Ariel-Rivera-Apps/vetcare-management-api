@@ -47,7 +47,9 @@ describe('VetCare Management API (e2e)', () => {
     process.env.DEVELOPMENT_AUTH_JWT_SECRET =
       'e2e-test-secret-with-sufficient-length';
     process.env.DEVELOPMENT_AUTH_TOKEN_TTL_SECONDS = '3600';
-    process.env.FRONTEND_URLS = 'http://localhost:5173';
+    process.env.DATABASE_URL = '';
+    process.env.FRONTEND_URLS =
+      'http://localhost:5173,http://localhost:3000,https://vetcare-management-web.vercel.app';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -238,11 +240,15 @@ describe('VetCare Management API (e2e)', () => {
     return request(app.getHttpServer()).get('/docs').expect(200);
   });
 
-  it('keeps existing CORS behavior for allowed origins', () => {
+  it.each([
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://vetcare-management-web.vercel.app',
+  ])('keeps existing CORS behavior for allowed origin %s', (origin) => {
     return request(app.getHttpServer())
       .options('/api/health')
-      .set('Origin', 'http://localhost:5173')
-      .expect('access-control-allow-origin', 'http://localhost:5173')
+      .set('Origin', origin)
+      .expect('access-control-allow-origin', origin)
       .expect(204);
   });
 
