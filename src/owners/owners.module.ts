@@ -1,26 +1,25 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Pool } from 'pg';
-import { DATABASE_POOL } from '../database/database.constants';
-import { DatabaseModule } from '../database/database.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaService } from '../prisma/prisma.service';
 import { OwnersController } from './owners.controller';
 import { OwnersService } from './owners.service';
 import { InMemoryOwnerRepository } from './repositories/in-memory-owner.repository';
 import { OWNER_REPOSITORY } from './repositories/owner-repository.interface';
-import { PgOwnerRepository } from './repositories/pg-owner.repository';
+import { PrismaOwnerRepository } from './repositories/prisma-owner.repository';
 import { UnavailableOwnerRepository } from './repositories/unavailable-owner.repository';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [PrismaModule],
   controllers: [OwnersController],
   providers: [
     OwnersService,
     {
       provide: OWNER_REPOSITORY,
-      inject: [DATABASE_POOL, ConfigService],
-      useFactory: (pool: Pool | null, configService: ConfigService) => {
-        if (pool) {
-          return new PgOwnerRepository(pool);
+      inject: [PrismaService, ConfigService],
+      useFactory: (prisma: PrismaService, configService: ConfigService) => {
+        if (configService.get<string>('DATABASE_URL')) {
+          return new PrismaOwnerRepository(prisma);
         }
 
         if (configService.get<string>('NODE_ENV') === 'test') {
