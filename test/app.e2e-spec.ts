@@ -18,6 +18,16 @@ interface HealthResponseBody {
   status: string;
 }
 
+interface OwnerResponseBody {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 describe('VetCare Management API (e2e)', () => {
   let app: INestApplication<App>;
   let originalEnv: NodeJS.ProcessEnv;
@@ -77,6 +87,151 @@ describe('VetCare Management API (e2e)', () => {
         const body = response.body as HealthResponseBody;
         expect(body.status).toBe('UP');
       });
+  });
+
+  it('creates an owner', () => {
+    return request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'john.doe@example.com',
+        phone: '8888-8888',
+      })
+      .expect(201)
+      .expect((response) => {
+        const body = response.body as OwnerResponseBody;
+        expect(body).toMatchObject({
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'john.doe@example.com',
+          phone: '8888-8888',
+        });
+        expect(body.id).toEqual(expect.any(String));
+        expect(body.createdAt).toEqual(expect.any(String));
+        expect(body.updatedAt).toEqual(expect.any(String));
+      });
+  });
+
+  it('returns 400 when owner first name is missing', () => {
+    return request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        lastName: 'Doe',
+        email: 'missing.first@example.com',
+        phone: '8888-8888',
+      })
+      .expect(400);
+  });
+
+  it('returns 400 when owner last name is missing', () => {
+    return request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        firstName: 'John',
+        email: 'missing.last@example.com',
+        phone: '8888-8888',
+      })
+      .expect(400);
+  });
+
+  it('returns 400 for invalid owner email', () => {
+    return request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'invalid-email',
+        phone: '8888-8888',
+      })
+      .expect(400);
+  });
+
+  it('returns 400 when owner phone is missing', () => {
+    return request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        firstName: 'John',
+        lastName: 'Doe',
+        email: 'missing.phone@example.com',
+      })
+      .expect(400);
+  });
+
+  it('returns 409 for duplicate owner email', async () => {
+    const payload = {
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'duplicate.owner@example.com',
+      phone: '8888-8888',
+    };
+
+    await request(app.getHttpServer())
+      .post('/api/owners')
+      .send(payload)
+      .expect(201);
+
+    return request(app.getHttpServer())
+      .post('/api/owners')
+      .send({ ...payload, phone: '9999-9999' })
+      .expect(409);
+  });
+
+  it('lists owners', async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        firstName: 'List',
+        lastName: 'Owner',
+        email: 'list.owner@example.com',
+        phone: '8888-8888',
+      })
+      .expect(201);
+
+    return request(app.getHttpServer())
+      .get('/api/owners')
+      .expect(200)
+      .expect((response) => {
+        const body = response.body as OwnerResponseBody[];
+        expect(body).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: (createResponse.body as OwnerResponseBody).id,
+              email: 'list.owner@example.com',
+            }),
+          ]),
+        );
+      });
+  });
+
+  it('returns an existing owner by id', async () => {
+    const createResponse = await request(app.getHttpServer())
+      .post('/api/owners')
+      .send({
+        firstName: 'Find',
+        lastName: 'Owner',
+        email: 'find.owner@example.com',
+        phone: '8888-8888',
+      })
+      .expect(201);
+
+    const created = createResponse.body as OwnerResponseBody;
+
+    return request(app.getHttpServer())
+      .get(`/api/owners/${created.id}`)
+      .expect(200)
+      .expect((response) => {
+        expect(response.body).toMatchObject({
+          id: created.id,
+          email: 'find.owner@example.com',
+        });
+      });
+  });
+
+  it('returns 404 for a missing owner', () => {
+    return request(app.getHttpServer())
+      .get('/api/owners/3f9ff5a1-99b8-49fd-9c6f-4c7b6e9af1de')
+      .expect(404);
   });
 
   it('/docs continues available', () => {
